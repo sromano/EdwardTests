@@ -2,8 +2,9 @@ import tensorflow as tf
 import edward as ed
 from edward.models import Bernoulli, Empirical, Beta, Normal
 import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
+
+tf.logging.set_verbosity(tf.logging.INFO)
 
 #Probabilistic Grammar Inference using edward
 #Grammar
@@ -47,6 +48,7 @@ with tf.Session() as sess:
     for i in range(10):
         print(generateFormula(0.9).eval())
     print('\n')
+        
 #    for i in range(max(N,10)):
 #        print(formulas[i].eval())
 
@@ -61,15 +63,30 @@ data = np.ones((N,))*17
 ##Infer:
 T=10000
 qtheta = Empirical(params=tf.Variable(0.5+tf.zeros([T]))) #Why need tf.Variable here?
+tf.summary.scalar('qtheta', qtheta)
 
 #proposal_theta = Beta(concentration1=1.0, concentration0=1.0, sample_shape=(1,))
 # proposal_theta = Normal(loc=theta,scale=0.5)
 # inference = ed.MetropolisHastings({theta: qtheta}, {theta: proposal_theta}, {formulas: data})
+
+sess = ed.get_session()
 inference = ed.HMC({theta: qtheta}, {formulas: data})
+inference.initialize()
+
+tf.global_variables_initializer().run()
+
+for _ in range(inference.n_iter):
+  info_dict = inference.update()
+  inference.print_progress(info_dict)
+
+inference.finalize()
+train_writer = tf.summary.FileWriter('/tmp/tensorflow/',sess.graph)
 
 # qtheta = Beta(tf.Variable(1.0), tf.Variable(1.0))  #Why need tf.Variable here?
 # inference = ed.KLqp({theta: qtheta}, {formulas: data})
-inference.run()
+
+
+
 
 
 ##Results:
